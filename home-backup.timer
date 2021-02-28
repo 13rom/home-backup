@@ -1,0 +1,11 @@
+
+[Unit]
+Description=Home Backup to NAS
+
+[Timer]
+OnCalendar=21:00
+Persistent=true
+Unit=home-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Home Backup to NAS
+Wants=network-online.target graphical.target
+After=network-online.target graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=/<path-to-your-directory>/home-backup.sh
+
+[Install]
+WantedBy=multi-user.target
