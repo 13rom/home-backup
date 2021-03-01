@@ -5,7 +5,7 @@ After=network-online.target graphical.target
 
 [Service]
 Type=oneshot
-ExecStart=/<path-to-your-directory>/home-backup.sh
+ExecStart=%h/bin/home-backup.sh --notify Documents
 
 [Install]
 WantedBy=multi-user.target

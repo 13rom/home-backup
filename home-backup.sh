@@ -1,56 +1,130 @@
 #!/usr/bin/env bash
-# Make SOURCE-DIR backup to NAS rsync server
-# Do the backup only if connected to home WiFi
-# 1. Check for WiFi SSID availability
-# 2. Check for server availability
-# 3. Rsync
-# 4. Send notifications
+############################################################################################
 #
+# Home-backup script
+#
+# Backup any folder inside user's home directory to a NAS rsync server.
+#   * Checks for WiFi SSID availability
+#   * Checks for server availability
+#   * Rsync
+#   * Sends notifications
+#
+# Usage:
+#   home-backup [--notify] PATH/SOURCE-DIR
+#
+# Options:
+#   --notify  ...  send desktop and Telegram notifications during backup
+#
+# Where: 
+#   PATH ... absolute or relative path to a SOURCE-DIR
+#
+# Examples:
+#   home-backup /home/user/Documents/
+#   home-backup Documents/programming/
+#   home-backup --notify Downloads/fonts/
+#
+##########################################################################
+#
+# Copyright 2021 Romanov Oleg
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+##########################################################################
 
-ECODE=0
-#DATE=`date -Iminutes`
-MYSSID="<YOUR-WIFI-SSID>"
-SERVER="<SERVER-NAME-OR-IP>"
-SRC="/<PATH-TO-SOURCE-DIR>/"
-DST="/<PATH-TO-DESTINATION-DIR>"
-REMOTEUSER="<NAS-RSYNC-USER>"
-# Telegram bot
-TOKEN="<YOUR-TELEGRAM-TOKEN>"
-CHAT_ID="<YOUR-CHATID>"
+
+# Variables initialization
+# DATE=`date -Iminutes`
+ECODE=0                                 # rsync exit code
+NOTIFY=0                                # should we notify user?
+
+# Constants initialization
+MYSSID="<YOUR-SSID>"                    # WiFi network name
+SERVER="<SERVER-NAME>"                  # NAS server name or IP
+REMOTEUSER="<RSYNC-USER>"               # server rsync user name
+SRCBASE="/home/<USER>"                  # user home directory
+DSTBASE="/<PATH-TO-BACKUP-DIR>"         # NAS backup directory
+
+# Telegram bot initialization
+TOKEN="<TELEGRAM-TOKEN>"
+CHAT_ID="<TELEGRAM-CHAT_ID>"
 MESSAGE="Hello World"
 URL="https://api.telegram.org/bot$TOKEN/sendMessage"
 
-# extract the essid
-essid=$(iwgetid -r)
 
-# check for SSID, exit otherwise
-[ "$essid" == $MYSSID ] || exit
+# Function for sending desktop notifications
+notify() {
+    [ $NOTIFY -eq 1 ] && /usr/bin/notify-send "Home Backup" -c "$1" --icon="network-server" -t 5000 "$2"
+}
+
+
+# Command line arguments check
+display_usage() { 
+    echo -e "Usage:\n$0 [--notify] PATH/SOURCE-DIR" 
+    echo -e "Home-backup script. Backup any folder inside user's home directory to a NAS rsync server.\n"
+    echo -e "Options:\n\t--notify\tsend desktop and Telegram notifications during backup"
+} 
+
+if [ $# -eq 0 ]; then
+    display_usage
+    exit 1
+fi
+
+if [ "$1" == "--notify" ] 
+then
+    NOTIFY=1
+    shift
+fi
+
+
+# Get relative path to source directory and build SRC and DST paths
+DIR=$(echo "$1" | sed "s=${SRCBASE}/==" | sed 's:/*$::')
+SRC="${SRCBASE}/${DIR}/"
+DST="${DSTBASE}/${DIR}"
+
+# Check for SSID, exit otherwise
+essid=$(iwgetid -r)
+[ "$essid" == "$MYSSID" ] || exit
+
 
 # Is the server pingable?
 # try three pings, wait maximum one sec for reply, be quiet
 if ping -qc 3 -W 1 $SERVER > /dev/null; then
     # now we know we're connected to our WiFi network
-    /usr/bin/notify-send "Home Backup" -c "presence.online" --icon="network-server" -t 5000 "${SERVER} is available. Starting backup.";    
-    # execute rsync and measure time taken
-    start=`date +%s`;
-    /usr/bin/rsync -avh ${SRC} ${REMOTEUSER}@${SERVER}:${DST};
-    end=`date +%s`
-    timetake=$((end-start))
+    notify "presence.online" "${SERVER} is available. Starting backup."
+
+    # execute rsync
+    /usr/bin/rsync -avh "${SRC}" ${REMOTEUSER}@${SERVER}:"${DST}"
+
     # now check the exit code
     ECODE="$?"
     if [ $ECODE -eq 0 ]
     then
-        /usr/bin/notify-send "Home Backup" -c "presence.online" --icon="network-server" -t 5000 "Backup done successfully in $timetake seconds.";
-        MESSAGE="RSYNC: Backup done successfully in $timetake seconds.";
+        MESSAGE="Home Backup - backup task \"${DIR}\" has been completed."
+        notify "presence.online" "$MESSAGE"
     else
-        /usr/bin/notify-send "Home Backup" -c "presence.online" --icon="network-server" -t 5000 "Rsync finished with exit code: $ECODE";
-        MESSAGE="RSYNC: Backup done. Finished with exit code: $ECODE";
+        MESSAGE="Home Backup - backup task \"${DIR}\" finished with exit code: $ECODE"
+        notify "presence.online" "$MESSAGE" 
+        
     fi
-    # /usr/bin/notify-send "Home Backup" -c "presence.online" --icon="network-server" -t 5000 "Rsync finished with exit code: $ECODE";
-    # MESSAGE="RSYNC: Backup done. Finished with exit code: $ECODE";
+    # /usr/bin/notify-send "Home Backup" -c "presence.online" --icon="network-server" -t 5000 "Rsync finished with exit code: $ECODE"
+    # MESSAGE="RSYNC: Backup done. Finished with exit code: $ECODE"
 else
-    /usr/bin/notify-send "Home Backup" -c "presence.offline" -t 10000 --icon="network-server" "${SERVER} is not accessible. Backup failed.";
-    MESSAGE="RSYNC: NAS is not accessible. Backup failed.";
+    MESSAGE="Home Backup - ${SERVER} is not accessible. Backup task \"${DIR}\" failed."
+    notify "presence.offline" "$MESSAGE"
 fi
 
-curl -s -X POST $URL -d chat_id=$CHAT_ID -d text="$MESSAGE" > /dev/null;
+# Send Telegram notification
+[ $NOTIFY -eq 1 ] && curl -s -X POST $URL -d chat_id=$CHAT_ID -d text="$MESSAGE" > /dev/null
+
+exit $ECODE

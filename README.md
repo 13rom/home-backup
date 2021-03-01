@@ -1,32 +1,55 @@
 # Home backup with bells and whistles
 Automating backup of user's home folder to a NAS share using systemd service and timer.
-How it works: `home-backup.timer` -> `home-backup.service` -> `home-backup.sh`.
-Features:
+Runs in three steps: `home-backup.timer` -> `home-backup.service` -> `home-backup.sh`.
+
+### `home-backup.sh` script features:
+* script could be used as a standalone application;
 * backup is done only when connected to given WiFi network;
-* Gnome notifications during backup;
-* Telegram message notification;
-* timer could be configured to trigger minutely, hourly, daily, etc.
+* Gnome notifications and Telegram message notification during backup.
+
+## Standalone script usage:
+```shell
+home-backup [--notify] PATH/SOURCE-DIR
+```
+### Options:
+   `--notify`  ...  send desktop and Telegram notifications during backup
+
+### Where: 
+   `PATH` ... absolute or relative path to a SOURCE-DIR
+
+### Examples:
+```shell
+home-backup /home/user/Documents/
+home-backup Documents/programming/
+home-backup --notify Downloads/fonts/
+```
+## Installation
+1. Copy files to /home/your-user/bin
+```shell
+cp $(pwd)/home-backup.* ~/bin
+```
+2. Install service and timer
 
 In order to get access to user's DBUS and thus be able to show Gnome notifications, systemd service and timer must be installed within user environment.
-1. Install service and timer:
 ```shell
+cd ~/bin
 ln -s $(pwd)/home-backup.service ~/.config/systemd/user/home-backup.service
 ln -s $(pwd)/home-backup.timer ~/.config/systemd/user/home-backup.timer
 ```
-2. Reload systemd services:
+3. Reload systemd services:
 ```shell
 sudo systemctl daemon-reload
 ```
-3. Start timer:
+4. Start timer:
 ```shell
 systemctl --user start home-backup.timer
 ```
-4. Examine the log:
+5. Examine the log:
 ```shell
 systemctl --user status home-backup.timer
 journalctl --user -u home-backup.timer
 ```
-5. Allow timer to be triggered after reboot:
+6. Allow timer to be triggered after reboot:
 ```shell
 systemctl --user enable home-backup.timer
 ```
