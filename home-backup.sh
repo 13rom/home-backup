@@ -76,6 +76,7 @@ display_usage() {
 } 
 
 if [ $# -eq 0 ]; then
+    # script started without arguments
     display_usage
     exit 1
 fi
@@ -86,11 +87,17 @@ then
     shift
 fi
 
+if [ $# -eq 0 ]; then
+    # script started without SOURCE-DIR
+    display_usage
+    exit 1
+fi
 
 # Get relative path to source directory and build SRC and DST paths
-DIR=$(echo "$1" | sed "s=${SRCBASE}/==" | sed 's:/*$::')
-SRC="${SRCBASE}/${DIR}/"
+DIR=$(echo "$1" | sed "s=${SRCBASE}==" | sed "s#^/\(.*\)#\1#" | sed "s#\(.*\)/\$#\1#")
+SRC="${SRCBASE}/${DIR}"
 DST="${DSTBASE}/${DIR}"
+[ "$DIR" == "" ] || SRC="${SRC}/"
 
 # Check for SSID, exit otherwise
 essid=$(iwgetid -r)
