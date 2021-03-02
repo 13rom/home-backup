@@ -9,7 +9,7 @@ Runs in three steps: `home-backup.timer` -> `home-backup.service` -> `home-backu
 
 ## Standalone script usage:
 ```shell
-home-backup [--notify] PATH/SOURCE-DIR
+home-backup.sh [--notify] PATH/SOURCE-DIR
 ```
 ### Options:
    `--notify`  ...  send desktop and Telegram notifications during backup
@@ -19,9 +19,9 @@ home-backup [--notify] PATH/SOURCE-DIR
 
 ### Examples:
 ```shell
-home-backup /home/user/Documents/
-home-backup Documents/programming/
-home-backup --notify Downloads/fonts/
+home-backup.sh /home/user/Documents/
+home-backup.sh Documents/programming/
+home-backup.sh --notify Downloads/fonts/
 ```
 ## Installation
 1. Copy files to /home/your-user/bin

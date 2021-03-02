@@ -48,19 +48,10 @@
 ECODE=0                                 # rsync exit code
 NOTIFY=0                                # should we notify user?
 
-# Constants initialization
-MYSSID="<YOUR-SSID>"                    # WiFi network name
-SERVER="<SERVER-NAME>"                  # NAS server name or IP
-REMOTEUSER="<RSYNC-USER>"               # server rsync user name
-SRCBASE="/home/<USER>"                  # user home directory
-DSTBASE="/<PATH-TO-BACKUP-DIR>"         # NAS backup directory
 
-# Telegram bot initialization
-TOKEN="<TELEGRAM-TOKEN>"
-CHAT_ID="<TELEGRAM-CHAT_ID>"
-MESSAGE="Hello World"
-URL="https://api.telegram.org/bot$TOKEN/sendMessage"
-
+# Get variables from config file
+SCRIPTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "$SCRIPTPATH"/home-backup.conf
 
 # Function for sending desktop notifications
 notify() {
@@ -106,7 +97,7 @@ essid=$(iwgetid -r)
 
 # Is the server pingable?
 # try three pings, wait maximum one sec for reply, be quiet
-if ping -qc 3 -W 1 $SERVER > /dev/null; then
+if ping -qc 3 -W 1 "$SERVER" > /dev/null; then
     # now we know we're connected to our WiFi network
     notify "presence.online" "${SERVER} is available. Starting backup."
 
